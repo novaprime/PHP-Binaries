@@ -24,7 +24,7 @@ jobs:
 
   linux-arm:
     name: Linux Arm64
-    runs-on: ubuntu-22.04-arm
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
