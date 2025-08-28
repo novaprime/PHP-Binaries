@@ -46,7 +46,7 @@ jobs:
         run: |
           # Used "set -ex" instead of hashbang since script isn't executed with hashbang
           set -ex
-          ./compile.sh -t linux64 -j 2 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
+          ./compile.sh -j 6 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
 
       - name: Create tarball
         run: |
