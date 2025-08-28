@@ -24,7 +24,7 @@ jobs:
 
   linux-arm:
     name: Linux Arm64
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: |
           # Used "set -ex" instead of hashbang since script isn't executed with hashbang
           set -ex
-          ./compile.sh -j 6 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
+          ./compile.sh -j 4 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
 
       - name: Create tarball
         run: |
@@ -80,7 +80,7 @@ jobs:
   publish:
     name: Publish binaries
     needs: [linux-arm]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ github.ref_name == 'stable' && github.ref_type == 'branch' && !contains(github.event.head_commit.message, '[no release]') }}
     concurrency: release-${{ inputs.php-version-base }}-pm${{ inputs.pm-version-major }}
 
@@ -145,7 +145,6 @@ jobs:
         with:
           artifacts: |
             ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
             ${{ github.workspace }}/*.gdbinit
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - Recommended
           tag: pm${{ inputs.pm-version-major }}-latest
@@ -161,7 +160,6 @@ jobs:
         with:
           artifacts: |
             ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
             ${{ github.workspace }}/*.gdbinit
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - PHP ${{ inputs.php-version-base }}
           tag: pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest
