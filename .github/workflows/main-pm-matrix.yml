@@ -22,7 +22,7 @@ on:
 
 jobs:
 
-  linux-arm64:
+  linux-arm:
     name: Linux Arm64
     runs-on: ubuntu-22.04-arm
 
