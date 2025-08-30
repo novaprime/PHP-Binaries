@@ -46,7 +46,7 @@ jobs:
         run: |
           # Used "set -ex" instead of hashbang since script isn't executed with hashbang
           set -ex
-          ./compile.sh -j 4 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
+          ./compile.sh -j 8 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
 
       - name: Create tarball
         run: |
@@ -89,10 +89,6 @@ jobs:
         with:
           path: ${{ github.workspace }}
           pattern: "*PHP-${{ inputs.php-version-base }}-*-PM${{ inputs.pm-version-major }}"
-
-      - name: Download .gdbinit for this PHP version
-        run: |
-          curl -L https://raw.githubusercontent.com/php/php-src/refs/heads/PHP-${{ inputs.php-version-base }}/.gdbinit -o Z-PHP-${{ inputs.php-version-base }}.gdbinit
 
       - name: Generate release notes
         run: |
