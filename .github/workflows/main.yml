@@ -59,7 +59,7 @@ jobs:
         uses: ncipollo/release-action@v1.20.0
         with:
           artifacts: |
-            ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
+            ${{ github.workspace }}/PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}*.tar.gz
 
           name: PHP (Build ${{ github.run_number }}) - Archive
           tag: php-build-${{ github.run_number }}
