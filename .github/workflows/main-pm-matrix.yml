@@ -20,104 +20,19 @@ on:
         required: true
         type: boolean
 
-env:
-  MUSL_CROSS_MAKE_VERSION: 43fcb1e63786b96add78f89d7454709ae0159fa0
-
 jobs:
-  android:
-    name: Android arm64
-    runs-on: ubuntu-22.04
+
+  linux-arm:
+    name: Linux Arm64
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v5
 
       - name: Install tools and dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install make autoconf automake libtool libtool-bin m4 wget libc-bin gzip bzip2 bison g++ git re2c
-
-      - name: Prepare compile.sh download cache
-        id: download-cache
-        uses: actions/cache@v4
-        with:
-          path: ./download_cache
-          key: compile-sh-cache-ssl-https-${{ hashFiles('./compile.sh') }}
-          restore-keys: compile-sh-cache-ssl-https-
-
-      - name: Fetch compiler cache
-        id: compiler-cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/compiler
-          key: musl-cross-make-${{ env.MUSL_CROSS_MAKE_VERSION }}
-
-      - name: Checkout musl-cross-make
-        if: steps.compiler-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v5
-        with:
-          repository: pmmp/musl-cross-make
-          path: musl-cross-make
-          ref: ${{ env.MUSL_CROSS_MAKE_VERSION }}
-
-      - name: Build compiler
-        if: steps.compiler-cache.outputs.cache-hit != 'true'
-        working-directory: musl-cross-make
-        run: |
-          echo "TARGET = aarch64-linux-musl" > config.mak
-          make -j$(nproc)
-          make install
-          mv ./output "${{ github.workspace }}/compiler"
-
-      - name: Compile PHP
-        run: |
-          export PATH="${{ github.workspace }}/compiler/bin:$PATH"
-
-          # Used "set -ex" instead of hashbang since script isn't executed with hashbang
-          set -ex
-          trap "exit 1" ERR
-          ./compile.sh -t android-aarch64 -x -j 4 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
-        
-      
-      - name: Create tarball
-        run: |
-          tar -czf ./PHP-${{ inputs.php-version-base }}-Android-arm64-PM${{ inputs.pm-version-major }}.tar.gz bin
-          tar -czf ./Z-PHP-${{ inputs.php-version-base }}-Android-arm64-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz bin-debug
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-Android-PM${{ inputs.pm-version-major }}
-          path: |
-            ./*PHP-${{ inputs.php-version-base }}-Android-arm64-PM${{ inputs.pm-version-major }}*.tar.gz
-            install.log
-            compile.sh
-          if-no-files-found: error
-
-      - name: Prepare workspace for upload
-        if: failure()
-        run: tar -czf workspace.tar.gz install_data
-
-      - name: Upload workspace
-        uses: actions/upload-artifact@v5
-        if: failure()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-Android-workspace-PM${{ inputs.pm-version-major }}
-          path: |
-            workspace.tar.gz
-          if-no-files-found: error
-
-  linux:
-    name: Linux
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Install tools and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install make autoconf automake libtool libtool-bin m4 wget libc-bin gzip bzip2 bison g++ git re2c
+          sudo apt-get update -y
+          sudo apt-get install -y make autoconf automake libtool libtool-bin m4 wget libc-bin gzip bzip2 bison g++ git re2c
 
       - name: Prepare compile.sh download cache
         id: download-cache
@@ -131,148 +46,28 @@ jobs:
         run: |
           # Used "set -ex" instead of hashbang since script isn't executed with hashbang
           set -ex
-          trap "exit 1" ERR
-          ./compile.sh -t linux64 -j 4 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
+          ./compile.sh -j 8 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
 
       - name: Create tarball
         run: |
-          tar -czf ./PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}.tar.gz bin
-          tar -czf ./Z-PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz bin-debug
+          tar -czf ./PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}.tar.gz bin
+          tar -czf ./Z-PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz bin-debug
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: PHP-${{ inputs.php-version-base }}-Linux-PM${{ inputs.pm-version-major }}
+          name: PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}
           path: |
-            ./*PHP-${{ inputs.php-version-base }}-Linux-x86_64-PM${{ inputs.pm-version-major }}*.tar.gz
+            ./*PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}*.tar.gz
             install.log
             compile.sh
-          if-no-files-found: error
-
-      - name: Prepare workspace for upload
-        if: failure()
-        run: tar -czf workspace.tar.gz install_data
-
-      - name: Upload workspace
-        uses: actions/upload-artifact@v5
-        if: failure()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-Linux-workspace-PM${{ inputs.pm-version-major }}
-          path: |
-            workspace.tar.gz
-          if-no-files-found: error
-
-  macos:
-    name: MacOS ${{ matrix.artifact-name }}
-    runs-on: ${{ matrix.image }}
-    strategy:
-      matrix:
-        include:
-          - target-name: mac-x86-64
-            artifact-name: x86_64
-            image: macos-13
-          - target-name: mac-arm64
-            artifact-name: arm64
-            image: macos-14
-
-    steps:
-      - uses: actions/checkout@v5
-      
-      - name: Install tools and dependencies
-        run: |
-          #workaround github actions default image providing outdated pkg-config
-          brew uninstall --ignore-dependencies --force pkg-config@0.29.2 || true
-          brew install libtool autoconf automake pkg-config bison re2c
-
-      - name: Prepare compile.sh download cache
-        id: download-cache
-        uses: actions/cache@v4
-        with:
-          path: ./download_cache
-          key: compile-sh-cache-ssl-https-${{ hashFiles('./compile.sh') }}
-          restore-keys: compile-sh-cache-ssl-https-
-
-      - name: Compile PHP
-        run: |
-          export PATH="/usr/local/opt/bison/bin:$PATH"
-          set -ex
-          trap "exit 1" ERR
-          ./compile.sh -t ${{ matrix.target-name }} -j4 -g -P ${{ inputs.pm-version-major }} -c ./download_cache -D -z ${{ inputs.php-version-base }}
-          
-      - name: Create tarball
-        run: |
-          tar -czf ./PHP-${{ inputs.php-version-base }}-MacOS-${{ matrix.artifact-name }}-PM${{ inputs.pm-version-major }}.tar.gz bin
-          tar -czf ./Z-PHP-${{ inputs.php-version-base }}-MacOS-${{ matrix.artifact-name }}-PM${{ inputs.pm-version-major }}-debugging-symbols.tar.gz bin-debug
-        
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-MacOS-${{ matrix.artifact-name }}-PM${{ inputs.pm-version-major }}
-          path: |
-            ./*PHP-${{ inputs.php-version-base }}-MacOS-${{ matrix.artifact-name}}-PM${{ inputs.pm-version-major }}*.tar.gz
-            install.log
-            compile.sh
-          if-no-files-found: error
-
-      - name: Prepare workspace for upload
-        if: failure()
-        run: tar -czf workspace.tar.gz install_data
-
-      - name: Upload workspace
-        uses: actions/upload-artifact@v5
-        if: failure()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-MacOS-${{ matrix.artifact-name }}-workspace-PM${{ inputs.pm-version-major }}
-          path: |
-            workspace.tar.gz
-          if-no-files-found: error
-
-  windows:
-    name: Windows
-    runs-on: windows-2022
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Prepare download cache
-        id: download-cache
-        uses: actions/cache@v4
-        with:
-          path: ./download_cache
-          key: windows-cache-${{ hashFiles('./windows-compile-vs.ps1') }}
-          restore-keys: windows-cache-
-
-      - name: Compile PHP
-        run: .\windows-compile-vs.ps1
-        env:
-          SOURCES_PATH: ${{ github.workspace }}\pocketmine-php-sdk
-          PM_VERSION_MAJOR: ${{ inputs.pm-version-major }}
-          PHP_VERSION_BASE: ${{ inputs.php-version-base }}
-
-      - name: Prepare artifacts
-        run: |
-          mkdir temp
-          Compress-Archive -Path .\bin -DestinationPath "PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}.zip"
-          move php-debug-pack-*.zip temp/Z-PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}-debugging-symbols.zip
-          move temp\*.zip .
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: PHP-${{ inputs.php-version-base }}-Windows-PM${{ inputs.pm-version-major }}
-          path: |
-            *PHP-${{ inputs.php-version-base }}-Windows-x64-PM${{ inputs.pm-version-major }}*.zip
-            compile.log
-            windows-compile-vs.bat
           if-no-files-found: error
 
 
   publish:
     name: Publish binaries
-    needs: [linux, macos, windows, android]
+    needs: [linux-arm]
     runs-on: ubuntu-22.04
     if: ${{ github.ref_name == 'stable' && github.ref_type == 'branch' && !contains(github.event.head_commit.message, '[no release]') }}
     concurrency: release-${{ inputs.php-version-base }}-pm${{ inputs.pm-version-major }}
@@ -294,18 +89,7 @@ jobs:
         uses: actions/download-artifact@v6
         with:
           path: ${{ github.workspace }}
-          pattern: "*PHP-${{ inputs.php-version-base }}-*-PM${{ inputs.pm-version-major }}"
-
-      - name: Download .gdbinit for this PHP version
-        run: |
-          curl -L https://raw.githubusercontent.com/php/php-src/refs/heads/PHP-${{ inputs.php-version-base }}/.gdbinit -o Z-PHP-${{ inputs.php-version-base }}.gdbinit
-
-      - name: Upload .gdbinit artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: PHP-${{ inputs.php-version-base }}.gdbinit
-          path: |
-            ${{ github.workspace }}/*.gdbinit
+          pattern: "*PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}"
 
       - name: Generate release notes
         run: |
@@ -316,7 +100,6 @@ jobs:
           echo "Build number: ${{ github.run_number }}" >> changelog.md
           echo -e "\n\n\n" >> changelog.md
           echo ":information_source: **Linux/MacOS users**: Please see [this page](https://doc.pmmp.io/en/rtfd/faq/installation/opcache.so.html) to fix extension loading errors. Also, check out the [PocketMine-MP Linux/MacOS installer](https://doc.pmmp.io/en/rtfd/installation/get-dot-pmmp-dot-io.html)." >> changelog.md
-          echo ":warning: **Windows users**: Don't forget to install [Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe) or the binary will not work!" >> changelog.md
           echo -e "\n\n\n" >> changelog.md
 
           if [[ "${{ inputs.special-release }}" != "none" ]]; then
@@ -336,10 +119,7 @@ jobs:
         uses: ncipollo/release-action@v1.20.0
         if: ${{ inputs.special-release != 'none' }}
         with:
-          artifacts: |
-            ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
-            ${{ github.workspace }}/*.gdbinit
+          artifacts: ${{ github.workspace }}/PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}*.tar.gz
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - Recommended
           tag: pm${{ inputs.pm-version-major }}-latest
           commit: ${{ github.sha }}
@@ -352,10 +132,7 @@ jobs:
       - name: Update php-version PM release
         uses: ncipollo/release-action@v1.20.0
         with:
-          artifacts: |
-            ${{ github.workspace }}/*PHP-*-PM*/*.tar.gz
-            ${{ github.workspace }}/*PHP-*-Windows-PM*/*.zip
-            ${{ github.workspace }}/*.gdbinit
+          artifacts: ${{ github.workspace }}/PHP-${{ inputs.php-version-base }}-Linuxarm64-PM${{ inputs.pm-version-major }}*.tar.gz
           name: PM ${{ inputs.pm-version-major }}.x (${{ steps.date.outputs.DATE }}) - PHP ${{ inputs.php-version-base }}
           tag: pm${{ inputs.pm-version-major }}-php-${{ inputs.php-version-base }}-latest
           commit: ${{ github.sha }}
